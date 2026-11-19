@@ -179,6 +179,7 @@
   <label>รายละเอียดคำแนะนำจากใบนัด</label><textarea id="aFastingInstruction"></textarea>
   <label>หมายเหตุ (เช่น รหัสตรวจ Lab ที่ระบุในใบนัด)</label><textarea id="aNote"></textarea>
 
+  <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-weight:600;cursor:pointer;"><input type="checkbox" id="aAttachSlip" checked style="width:auto;margin:0;"> 📎 แนบรูปใบนัดนี้ไปเก็บไว้กับนัดหมาย (ดู/ซูมได้ในรายละเอียดนัด)</label>
   <button class="btn btn-mint" id="confirmApptBtn" style="margin-top:18px;">✔ ยืนยัน ส่งกลับไปกรอกฟอร์มนัดหมาย</button>
 </div>
 
@@ -814,7 +815,7 @@ function showMedReview(p){
   document.getElementById('reviewMedCard').scrollIntoView({ behavior: 'smooth' });
 }
 
-document.getElementById('confirmApptBtn').onclick = () => {
+document.getElementById('confirmApptBtn').onclick = async () => {
   const hospital = document.getElementById('aHospital').value.trim();
   const date = document.getElementById('aDate').value;
   const time = document.getElementById('aTime').value;
@@ -822,11 +823,20 @@ document.getElementById('confirmApptBtn').onclick = () => {
     setStatus('<div class="error-box">กรุณากรอกโรงพยาบาล วันที่ และเวลานัด ให้ครบก่อนส่งกลับ</div>');
     return;
   }
+  // เพิ่ม v1.153: แนบรูปใบนัด (ที่ย่อไว้แล้ว) กลับไปกับผล เพื่อบันทึกไว้กับนัดหมาย
+  let slipImages = [];
+  if (document.getElementById('aAttachSlip').checked){
+    try{
+      const rs = await Promise.all(items.map(it => it.promise));
+      slipImages = rs.filter(r => r && r.b64 && /^image\/(jpeg|png|webp)$/.test(r.mime)).slice(0, 6).map(r => 'data:' + r.mime + ';base64,' + r.b64);
+    } catch(e){ slipImages = []; }
+  }
   const payload = {
     type: 'OCR_RESULT',
     session: SESSION,
     docType: 'appointment',
     data: {
+      Images: slipImages,
       Hospital: hospital,
       Department: document.getElementById('aDept').value.trim(),
       Doctor: document.getElementById('aDoctor').value.trim(),
